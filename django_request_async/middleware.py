@@ -13,30 +13,32 @@ logger = logging.getLogger("request.security.middleware")
 executor = ThreadPoolExecutor(max_workers=1)
 
 
-def preprocess(request, response):
+def to_process(request, response):
     if request.method.lower() not in settings.VALID_METHOD_NAMES:
-        return response
+        return False
 
     if response.status_code < 400 and settings.ONLY_ERRORS:
-        return response
+        return False
 
     ignore = Patterns(False, *settings.IGNORE_PATHS)
     if ignore.resolve(request.path[1:]):
-        return response
+        return False
 
     if request_is_ajax(request) and settings.IGNORE_AJAX:
-        return response
+        return False
 
     if request.META.get("REMOTE_ADDR") in settings.IGNORE_IP:
-        return response
+        return False
 
     ignore = Patterns(False, *settings.IGNORE_USER_AGENTS)
     if ignore.resolve(request.META.get("HTTP_USER_AGENT", "")):
-        return response
+        return False
 
     if getattr(request, "user", False):
         if request.user.get_username() in settings.IGNORE_USERNAME:
-            return response
+            return False
+
+    return True
 
 
 def save_request(request, response):
@@ -57,13 +59,15 @@ def save_request(request, response):
 
 class RequestMiddleware(MiddlewareMixin):
     def process_response(self, request, response):
-        preprocess(request, response)
+        if not to_process(request, response):
+            return response
         save_request(request, response)
         return response
 
 
 class AsyncRequestMiddleware(MiddlewareMixin):
     def process_response(self, request, response):
-        preprocess(request, response)
+        if not to_process(request, response):
+            return response
         executor.submit(save_request, request, response)
         return response

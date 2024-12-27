@@ -130,3 +130,5 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # debug toolbar settings
 # INTERNAL_IPS = ["127.0.0.1"]
+
+REQUEST_IGNORE_PATHS = (r"^admin", r"^/__debug__/")
